@@ -14,13 +14,8 @@ const connection = {
   },
 }
 
-if (config.mode === 'development') {
-  connection.host = 'localhost'
-  connection.port = '3307'
-} else {
-  connection.password = config.mysql.password
-  connection.socketPath = config.mysql.socketpath
-}
+connection.host = 'localhost'
+connection.port = '3307'
 const knex = require('knex')({
   client: 'mysql',
   connection,

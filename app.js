@@ -7,13 +7,13 @@ const bodyParser = require('body-parser')
 app.use(cors())
 
 app.use(
-  bodyParser.urlencoded({ extended: true }),
-  bodyParser.json(),
+  bodyParser.json({ limit: '50mb' }),
+  bodyParser.urlencoded({ limit: '50mb' }),
   bodyParser.text()
 )
 // get list
 app.get('/posts', async (req, res) => {
-  const posts = await knex.select('*').from('post')
+  const posts = await knex.select('*').from('post').where('status', 1)
   res.send(posts)
 })
 
@@ -43,17 +43,43 @@ app.get('/cities/:cityId', async (req, res) => {
 // post
 app.post('/posts', async (req, res) => {
   const newPost = req.body
-  const post = await knex('post').insert([
+  const [post] = await knex('post').insert([
     {
-      ...newPost,
+      title: newPost.title,
+      area: newPost.area,
+      address: newPost.address,
+      bathroom: newPost.bathroom,
+      city: newPost.city,
+      district: newPost.district,
+      // lat: newPost.geocode.lat,
+      // lng: newPost.geocode.lng,
+      description: newPost.description,
+      price: newPost.price,
+      bedroom: newPost.bedroom,
+      air_condition: newPost.utilities.air_condition ? 1 : 0,
+      wc: newPost.utilities.wc ? 1 : 0,
+      garage: newPost.utilities.garage ? 1 : 0,
+      electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
+      status: 0,
     },
   ])
   res.send(post)
+})
+// register
+app.post('/register', async (req, res) => {
+  const user = req.body
+  const [userId] = await knex('user').insert([
+    {
+      ...user,
+      role: 1,
+    },
+  ])
+  res.send(userId)
 })
 
 const port = process.env.PORT || 5000
 const host = process.env.HOST || 'localhost'
 
 app.listen(port, function () {
-  console.log('Example app listening on port 3000!')
+  console.log(`Example app listening on port http://${host}:${port}`)
 })
