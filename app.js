@@ -3,8 +3,30 @@ const app = express()
 const knex = require('./database')
 const cors = require('cors')
 const bodyParser = require('body-parser')
+const multer = require('multer')
+const admin = require('./storage')
+const config = require('./config')
+
+const uploads = multer({
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 5,
+  },
+}).any()
 
 app.use(cors())
+app.use(function (req, res, next) {
+  uploads(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({
+        statusCode: 400,
+        error: err.message,
+      })
+    } else {
+      next()
+    }
+  })
+})
 
 app.use(
   bodyParser.json({ limit: '50mb' }),
@@ -42,6 +64,24 @@ app.get('/cities/:cityId', async (req, res) => {
 
 // post
 app.post('/posts', async (req, res) => {
+  console.log(67, req.body);
+  const files = req.files
+  const filesUploaded = []
+  const filesUrl = []
+  const bucket = admin.storage().bucket(config.firestore.bucketName)
+
+  if (files) {
+    const numFiles = files.length
+    for (let i = 0; i < numFiles; i++) {
+      const currentFile = files[i]
+      const fileName = `images/${currentFile.originalname}`
+      filesUploaded.push(bucket.file(fileName).save(currentFile.buffer))
+      filesUrl.push(
+        `https://storage.googleapis.com/${config.firestore.bucketName}/${fileName}`
+      )
+    }
+  }
+
   const newPost = req.body
   const [post] = await knex('post').insert([
     {
@@ -51,19 +91,19 @@ app.post('/posts', async (req, res) => {
       bathroom: newPost.bathroom,
       city: newPost.city,
       district: newPost.district,
-      // lat: newPost.geocode.lat,
-      // lng: newPost.geocode.lng,
+      lat: newPost.lat,
+      lng: newPost.lng,
       description: newPost.description,
       price: newPost.price,
       bedroom: newPost.bedroom,
-      air_condition: newPost.utilities.air_condition ? 1 : 0,
-      wc: newPost.utilities.wc ? 1 : 0,
-      garage: newPost.utilities.garage ? 1 : 0,
-      electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
+      // air_condition: newPost.utilities.air_condition ? 1 : 0,
+      // wc: newPost.utilities.wc ? 1 : 0,
+      // garage: newPost.utilities.garage ? 1 : 0,
+      // electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
       status: 0,
     },
   ])
-  res.send(post)
+  res.sendStatus(200)
 })
 // register
 app.post('/register', async (req, res) => {
