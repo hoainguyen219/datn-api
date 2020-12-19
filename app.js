@@ -7,6 +7,8 @@ const multer = require('multer')
 const admin = require('./storage')
 const config = require('./config')
 
+const { camelize } = require('./util')
+
 const uploads = multer({
   limits: {
     fileSize: 10 * 1024 * 1024,
@@ -65,14 +67,14 @@ app.get('/posts', async (req, res) => {
         queryBuilder.where('post_schedule.from_date', '>=', fromDate)
       if (toDate) queryBuilder.where('post_schedule.to_date', '<=', toDate)
     })
-  res.send(posts)
+  res.send(posts.map(x => camelize(x)))
 })
 
 // get by id
 app.get('/posts/:id', async (req, res) => {
   const id = req.params.id
   const post = await knex.select('*').from('post').where('post_id', id).first()
-  res.send(post)
+  res.send(camelize(post))
 })
 
 // get all cities
@@ -131,12 +133,11 @@ app.post('/posts', async (req, res) => {
       status: 0,
     },
   ])
-  await knex('image')
-    .insert(
-      filesUrls.map((item) => {
-        return { url_image: item, post_id: post }
-      })
-    )
+  await knex('image').insert(
+    filesUrls.map((item) => {
+      return { url_image: item, post_id: post }
+    })
+  )
   res.sendStatus(200)
 })
 // register
@@ -149,6 +150,31 @@ app.post('/register', async (req, res) => {
     },
   ])
   res.send(userId)
+})
+// login
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body
+  const userInfo = await knex
+    .select('*')
+    .from('user')
+    .where('account', username)
+    .andWhere('password', password)
+    .first()
+  return userInfo
+})
+// book
+app.post('/posts/:id/book', async (req,res) => {
+  const postId = req.params.id
+  const { fromDate, toDate, userId } = req.body
+  await knex('post_schedule').insert([
+    {
+      post_id: postId,
+      from_date: fromDate,
+      to_date: toDate,
+      user_id: userId
+    }
+  ])
+  res.sendStatus(200)
 })
 
 const port = process.env.PORT || 5000
