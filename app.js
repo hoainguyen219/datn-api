@@ -35,7 +35,36 @@ app.use(
 )
 // get list
 app.get('/posts', async (req, res) => {
-  const posts = await knex.select('*').from('post').where('status', 1)
+  const {
+    minArea,
+    maxArea,
+    city,
+    district,
+    minPrice,
+    maxPrice,
+    fromDate,
+    toDate,
+  } = req.query
+  const posts = await knex
+    .select(
+      'post.*',
+      'post_schedule.from_date as fromDate',
+      'post_schedule.to_date as toDate'
+    )
+    .from('post')
+    .join('post_schedule', 'post.post_id', 'post_schedule.post_id')
+    .modify((queryBuilder) => {
+      if (minArea) queryBuilder.where('area', '>=', minArea)
+      if (minPrice) queryBuilder.where('price', '>=', minPrice)
+      if (maxPrice) queryBuilder.where('price', '<=', maxPrice)
+      if (maxArea) queryBuilder.where('area', '<=', maxArea)
+      if (city) queryBuilder.where('city', city)
+      if (district) queryBuilder.where('district', district)
+      if (maxArea) queryBuilder.where('area', '<=', maxArea)
+      if (fromDate)
+        queryBuilder.where('post_schedule.from_date', '>=', fromDate)
+      if (toDate) queryBuilder.where('post_schedule.to_date', '<=', toDate)
+    })
   res.send(posts)
 })
 
@@ -64,24 +93,23 @@ app.get('/cities/:cityId', async (req, res) => {
 
 // post
 app.post('/posts', async (req, res) => {
-  console.log(67, req.body);
   const files = req.files
   const filesUploaded = []
-  const filesUrl = []
-  const bucket = admin.storage().bucket(config.firestore.bucketName)
+  const filesUrls = []
+  const bucket = admin.storage().bucket()
 
   if (files) {
     const numFiles = files.length
     for (let i = 0; i < numFiles; i++) {
       const currentFile = files[i]
-      const fileName = `images/${currentFile.originalname}`
+      const time = new Date().getTime()
+      const fileName = `images/${time}-${currentFile.originalname}`
       filesUploaded.push(bucket.file(fileName).save(currentFile.buffer))
-      filesUrl.push(
-        `https://storage.googleapis.com/${config.firestore.bucketName}/${fileName}`
+      filesUrls.push(
+        `https://storage.cloud.google.com/datn-a7520.appspot.com/${fileName}`
       )
     }
   }
-
   const newPost = req.body
   const [post] = await knex('post').insert([
     {
@@ -96,13 +124,19 @@ app.post('/posts', async (req, res) => {
       description: newPost.description,
       price: newPost.price,
       bedroom: newPost.bedroom,
-      // air_condition: newPost.utilities.air_condition ? 1 : 0,
-      // wc: newPost.utilities.wc ? 1 : 0,
-      // garage: newPost.utilities.garage ? 1 : 0,
-      // electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
+      air_condition: newPost.utilities.air_condition ? 1 : 0,
+      wc: newPost.utilities.wc ? 1 : 0,
+      garage: newPost.utilities.garage ? 1 : 0,
+      electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
       status: 0,
     },
   ])
+  await knex('image')
+    .insert(
+      filesUrls.map((item) => {
+        return { url_image: item, post_id: post }
+      })
+    )
   res.sendStatus(200)
 })
 // register
