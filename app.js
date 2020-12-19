@@ -67,13 +67,29 @@ app.get('/posts', async (req, res) => {
         queryBuilder.where('post_schedule.from_date', '>=', fromDate)
       if (toDate) queryBuilder.where('post_schedule.to_date', '<=', toDate)
     })
-  res.send(posts.map(x => camelize(x)))
+  res.send(posts.map((x) => camelize(x)))
 })
 
 // get by id
 app.get('/posts/:id', async (req, res) => {
   const id = req.params.id
-  const post = await knex.select('*').from('post').where('post_id', id).first()
+  let post = await knex
+    .select('post.*')
+    .from('post')
+    .where('post.post_id', parseInt(id))
+    .first()
+  const urlImages = await knex
+    .select('url_image')
+    .from('image')
+    .where('image.post_id', parseInt(id))
+  const today = new Date().toISOString().split('T')[0]
+  const schedule = await knex
+    .select('from_date as fromDate', 'to_date as toDate')
+    .from('post_schedule')
+    .where('post_id', parseInt(id))
+    .andWhere('to_date', '>=', today)
+  post.urlImages = urlImages.map((x) => x.url_image)
+  post.schedule = schedule
   res.send(camelize(post))
 })
 
@@ -162,8 +178,8 @@ app.post('/login', async (req, res) => {
     .first()
   return userInfo
 })
-// book
-app.post('/posts/:id/book', async (req,res) => {
+// booking
+app.post('/posts/:id/booking', async (req, res) => {
   const postId = req.params.id
   const { fromDate, toDate, userId } = req.body
   await knex('post_schedule').insert([
@@ -171,10 +187,14 @@ app.post('/posts/:id/book', async (req,res) => {
       post_id: postId,
       from_date: fromDate,
       to_date: toDate,
-      user_id: userId
-    }
+      user_id: userId,
+    },
   ])
   res.sendStatus(200)
+})
+//rating
+app.post('/posts/:id/rating', async (req, res) => {
+  const postId = req.params.id
 })
 
 const port = process.env.PORT || 5000
