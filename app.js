@@ -109,6 +109,26 @@ app.get('/cities/:cityId', async (req, res) => {
   res.send(districts)
 })
 
+//get list post by id: xem danh sach tin dang
+app.get('/list/:userId', async(req, res) => {
+  const userId = req.params.userId
+  let posts = await knex
+  .select('post.*')
+  .from('post')
+  .where('post.post_by', parseInt(userId))
+  res.send(posts)
+})
+
+//get schedule by userid: xem lich su thue
+app.get('/schedule/:userId', async(req, res) => {
+  const userId = req.params.userId
+  let schedules = await knex
+  .select('post_schedule.*')
+  .from('post_schedule')
+  .where('post_schedule.user_id', parseInt(userId))
+  res.send(schedules)
+})
+
 // post
 app.post('/posts', async (req, res) => {
   const files = req.files
@@ -176,7 +196,7 @@ app.post('/login', async (req, res) => {
     .where('account', username)
     .andWhere('password', password)
     .first()
-  return userInfo
+  res.send(userInfo)
 })
 // booking
 app.post('/posts/:id/booking', async (req, res) => {
@@ -192,9 +212,15 @@ app.post('/posts/:id/booking', async (req, res) => {
   ])
   res.sendStatus(200)
 })
+
 //rating
-app.post('/posts/:id/rating', async (req, res) => {
-  const postId = req.params.id
+app.post('/posts/:scheduleId/rating', async (req, res) => {
+  const scheduleId = req.params.scheduleId
+  const {score} = req.body
+  await knex('post_schedule')
+  .where('schedule_id', scheduleId)
+  .update('rating', score)
+  res.sendStatus(200)
 })
 
 const port = process.env.PORT || 5000
