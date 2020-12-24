@@ -218,7 +218,7 @@ app.post('/posts', async (req, res) => {
       return { url_image: item, post_id: post }
     })
   )
-  res.sendStatus(200)
+  res.send(post)
 })
 // register
 app.post('/register', async (req, res) => {
@@ -229,7 +229,7 @@ app.post('/register', async (req, res) => {
       role: 1,
     },
   ])
-  res.send(userId)
+  res.send({ userId })
 })
 // login
 app.post('/login', async (req, res) => {
@@ -254,7 +254,7 @@ app.post('/posts/:id/booking', async (req, res) => {
       user_id: userId,
     },
   ])
-  res.sendStatus(200)
+  res.send({ postId })
 })
 
 //rating
@@ -264,7 +264,7 @@ app.post('/posts/:scheduleId/rating', async (req, res) => {
   await knex('post_schedule')
     .where('schedule_id', scheduleId)
     .update('rating', score)
-  res.sendStatus(200)
+  res.sendStatus({ scheduleId })
 })
 
 const port = process.env.PORT || 5000
