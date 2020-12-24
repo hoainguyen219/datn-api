@@ -4,7 +4,7 @@ const config = require('./config')
 const connection = {
   user: 'root',
   password: '',
-  database: 'guest_home',
+  database: 'hostel',
   charset: 'utf8',
   typeCast: function (field, next) {
     if (field.type === 'JSON') {
@@ -15,7 +15,7 @@ const connection = {
 }
 
 connection.host = 'localhost'
-connection.port = '3307'
+connection.port = '3306'
 const knex = require('knex')({
   client: 'mysql',
   connection,
