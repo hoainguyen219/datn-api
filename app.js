@@ -62,8 +62,7 @@ app.get('/posts', async (req, res) => {
     lat,
     lng,
     distance
-  } = req.body
-  console.log(50, req.body);
+  } = req.query
   const posts = await knex
     .select(
       'post.*',
