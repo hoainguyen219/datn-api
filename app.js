@@ -36,17 +36,34 @@ app.use(
   bodyParser.text()
 )
 // get list
+// {
+//   area: {
+//     min: xxx,
+//     max: xxx
+//   },
+//   price: {
+//     min: xxx,
+//     max: xxx
+//   },
+//   date: {
+//     fromDate
+//   }
+// }
 app.get('/posts', async (req, res) => {
   const {
     minArea,
     maxArea,
-    city,
-    district,
     minPrice,
     maxPrice,
+    city,
+    district,
     fromDate,
     toDate,
-  } = req.query
+    lat,
+    lng,
+    distance
+  } = req.body
+  console.log(50, req.body);
   const posts = await knex
     .select(
       'post.*',
@@ -54,7 +71,7 @@ app.get('/posts', async (req, res) => {
       'post_schedule.to_date as toDate'
     )
     .from('post')
-    .join('post_schedule', 'post.post_id', 'post_schedule.post_id')
+    .leftJoin('post_schedule', 'post.post_id', 'post_schedule.post_id')
     .modify((queryBuilder) => {
       if (minArea) queryBuilder.where('area', '>=', minArea)
       if (minPrice) queryBuilder.where('price', '>=', minPrice)
@@ -64,9 +81,26 @@ app.get('/posts', async (req, res) => {
       if (district) queryBuilder.where('district', district)
       if (maxArea) queryBuilder.where('area', '<=', maxArea)
       if (fromDate)
-        queryBuilder.where('post_schedule.from_date', '>=', fromDate)
-      if (toDate) queryBuilder.where('post_schedule.to_date', '<=', toDate)
+        queryBuilder.whereRaw(`post.post_id not in (
+          select post_id from post_schedule 
+            where (from_date between ? and ? )
+            or (to_date between ? and ?)
+            or ((? between from_date and to_date) and (? between from_date and to_date)))`, [fromDate, toDate, fromDate, toDate, fromDate, toDate])
+      if (lat && lng && distance) {
+        queryBuilder
+          .select(
+            knex.raw(
+              `6371 * ACOS(COS(RADIANS(?))
+                * COS(RADIANS(lat)) * COS(RADIANS(lng) - RADIANS(?))+ SIN(RADIANS(?))
+                * SIN(RADIANS(lat))) as distance`,
+              [lat, lng, lat]
+            )
+          )
+          .having('distance', '<=', distance)
+          .orderBy('distance', 'asc')
+      }
     })
+    .groupBy('post.post_id')
   res.send(posts.map((x) => camelize(x)))
 })
 
@@ -88,8 +122,18 @@ app.get('/posts/:id', async (req, res) => {
     .from('post_schedule')
     .where('post_id', parseInt(id))
     .andWhere('to_date', '>=', today)
+  const [{ totalReview }] = await knex('post_schedule')
+    .count('schedule_id as totalReview')
+    .whereNotNull('rating')
+    .andWhere('post_id', parseInt(id))
+  const [{ totalScore }] = await knex('post_schedule')
+    .sum({ totalScore: 'rating' })
+    .where('post_id', parseInt(id))
+  const avgScore = totalScore / totalReview
   post.urlImages = urlImages.map((x) => x.url_image)
   post.schedule = schedule
+  post.totalReview = totalReview
+  post.avgScore = avgScore
   res.send(camelize(post))
 })
 
@@ -107,6 +151,26 @@ app.get('/cities/:cityId', async (req, res) => {
     .from('district')
     .where('code', cityId)
   res.send(districts)
+})
+
+//get list post by id: xem danh sach tin dang
+app.get('/list/:userId', async (req, res) => {
+  const userId = req.params.userId
+  let posts = await knex
+    .select('post.*')
+    .from('post')
+    .where('post.post_by', parseInt(userId))
+  res.send(posts)
+})
+
+//get schedule by userid: xem lich su thue
+app.get('/schedule/:userId', async (req, res) => {
+  const userId = req.params.userId
+  let schedules = await knex
+    .select('post_schedule.*')
+    .from('post_schedule')
+    .where('post_schedule.user_id', parseInt(userId))
+  res.send(schedules)
 })
 
 // post
@@ -176,7 +240,7 @@ app.post('/login', async (req, res) => {
     .where('account', username)
     .andWhere('password', password)
     .first()
-  return userInfo
+  res.send(userInfo)
 })
 // booking
 app.post('/posts/:id/booking', async (req, res) => {
@@ -192,9 +256,15 @@ app.post('/posts/:id/booking', async (req, res) => {
   ])
   res.sendStatus(200)
 })
+
 //rating
-app.post('/posts/:id/rating', async (req, res) => {
-  const postId = req.params.id
+app.post('/posts/:scheduleId/rating', async (req, res) => {
+  const scheduleId = req.params.scheduleId
+  const { score } = req.body
+  await knex('post_schedule')
+    .where('schedule_id', scheduleId)
+    .update('rating', score)
+  res.sendStatus(200)
 })
 
 const port = process.env.PORT || 5000
