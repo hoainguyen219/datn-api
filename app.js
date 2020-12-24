@@ -61,7 +61,7 @@ app.get('/posts', async (req, res) => {
     toDate,
     lat,
     lng,
-    distance
+    distance,
   } = req.query
   const posts = await knex
     .select(
@@ -80,11 +80,14 @@ app.get('/posts', async (req, res) => {
       if (district) queryBuilder.where('district', district)
       if (maxArea) queryBuilder.where('area', '<=', maxArea)
       if (fromDate)
-        queryBuilder.whereRaw(`post.post_id not in (
+        queryBuilder.whereRaw(
+          `post.post_id not in (
           select post_id from post_schedule 
             where (from_date between ? and ? )
             or (to_date between ? and ?)
-            or ((? between from_date and to_date) and (? between from_date and to_date)))`, [fromDate, toDate, fromDate, toDate, fromDate, toDate])
+            or ((? between from_date and to_date) and (? between from_date and to_date)))`,
+          [fromDate, toDate, fromDate, toDate, fromDate, toDate]
+        )
       if (lat && lng && distance) {
         queryBuilder
           .select(
@@ -174,6 +177,7 @@ app.get('/schedule/:userId', async (req, res) => {
 
 // post
 app.post('/posts', async (req, res) => {
+  console.log('kkk')
   const files = req.files
   const filesUploaded = []
   const filesUrls = []
@@ -217,7 +221,7 @@ app.post('/posts', async (req, res) => {
       return { url_image: item, post_id: post }
     })
   )
-  res.send(post)
+  res.send({ postId: post })
 })
 // register
 app.post('/register', async (req, res) => {
