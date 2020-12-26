@@ -67,8 +67,10 @@ app.get('/posts', async (req, res) => {
     .select(
       'post.*',
       'post_schedule.from_date as fromDate',
-      'post_schedule.to_date as toDate'
+      'post_schedule.to_date as toDate',
     )
+    .count('rating as totalReview')
+    .sum('rating as totalScore')
     .from('post')
     .leftJoin('post_schedule', 'post.post_id', 'post_schedule.post_id')
     .modify((queryBuilder) => {
@@ -148,7 +150,9 @@ app.get('/cities/:cityId', async (req, res) => {
   const districts = await knex
     .select('*')
     .from('district')
-    .where('code', cityId)
+    // .where('code', cityId)
+    .where('city_id', cityId)
+
   res.send(districts)
 })
 
@@ -259,11 +263,39 @@ app.post('/posts/:id/booking', async (req, res) => {
 //rating
 app.post('/posts/:scheduleId/rating', async (req, res) => {
   const scheduleId = req.params.scheduleId
-  const { score } = req.body
+  const { score, score1 } = req.body
   await knex('post_schedule')
     .where('schedule_id', scheduleId)
-    .update('rating', score)
-  res.sendStatus({ scheduleId })
+    .update({
+      'rating': score,
+      'rating_1': score1
+    })
+  res.send({ scheduleId })
+})
+
+//quan ly bai viet
+app.get('/admin', async(req, res) => {
+  const postmanges = await knex('post')
+  .select('post.*')
+  .where('status', 0)
+
+res.send(postmanges)
+})
+
+//Chinh sua bai viet
+
+
+//Xoa
+
+
+//Duyet
+app.post('/accept/:postId', async(req, res) =>{
+  const postId = req.params.postId
+  const post = await knex('post')
+  .where('post_id', postId)
+  .update('status', 1)
+
+res.send(postId)
 })
 
 const port = process.env.PORT || 5000
