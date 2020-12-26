@@ -134,10 +134,20 @@ app.get('/posts/:id', async (req, res) => {
     .sum({ totalScore: 'rating' })
     .where('post_id', parseInt(id))
   const avgScore = totalScore / totalReview
+  // hien thi diem danh gia nguoi cho thue
+  const [{ totalReview1 }] = await knex('post_schedule')
+    .count('schedule_id as totalReview1')
+    .whereNotNull('rating_1')
+    .andWhere('post_id', parseInt(id))
+  const [{ totalScore1 }] = await knex('post_schedule')
+    .sum({ totalScore1: 'rating_1' })
+    .where('post_id', parseInt(id))
+  const avgScore1 = totalScore1 / totalReview1
   post.urlImages = urlImages.map((x) => x.url_image)
   post.schedule = schedule
   post.totalReview = totalReview
-  post.avgScore = avgScore
+  post.avgScore = avgScore.toFixed(2)
+  post.avgScore1 = avgScore1.toFixed(2)
   res.send(camelize(post))
 })
 
