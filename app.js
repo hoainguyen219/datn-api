@@ -186,9 +186,14 @@ app.get('/list/:userId', async (req, res) => {
 //get schedule by userid: xem lich su thue
 app.get('/schedule/:userId', async (req, res) => {
   const userId = req.params.userId
-  let schedules = await knex
-    .select('post_schedule.*')
+  let schedules = await knex 
+    .select('post_schedule.schedule_id as Id','post_schedule.from_date as fromDate', 
+    'post_schedule.to_date as toDate',
+    'post.title as title', 'post.address as adress',
+    'user.full_name as fullNameHost', 'user.phone_number as Phone')
     .from('post_schedule')
+    .leftJoin('post', 'post.post_id', 'post_schedule.schedule_id')
+    .leftJoin('user', 'user.user_id', 'post.post_by')
     .where('post_schedule.user_id', parseInt(userId))
   res.send(schedules)
 })
