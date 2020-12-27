@@ -180,6 +180,7 @@ app.get('/list/:userId', async (req, res) => {
     .select('post.*')
     .from('post')
     .where('post.post_by', parseInt(userId))
+    .orderBy ('post_id','desc')
   res.send(posts)
 })
 
@@ -190,12 +191,13 @@ app.get('/schedule/:userId', async (req, res) => {
     .select('post_schedule.schedule_id as Id','post_schedule.from_date as fromDate', 
     'post.post_id as postId',
     'post_schedule.to_date as toDate',
-    'post.title as title', 'post.address as adress',
+    'post.title as title', 'post.address as address',
     'user.full_name as fullNameHost', 'user.phone_number as Phone')
     .from('post_schedule')
     .leftJoin('post', 'post.post_id', 'post_schedule.schedule_id')
     .leftJoin('user', 'user.user_id', 'post.post_by')
     .where('post_schedule.user_id', parseInt(userId))
+    .orderBy('from_date')
   res.send(schedules)
 })
 
