@@ -8,6 +8,7 @@ const admin = require('./storage')
 const config = require('./config')
 
 const { camelize } = require('./util')
+const { count } = require('./database')
 
 const uploads = multer({
   limits: {
@@ -63,6 +64,7 @@ app.get('/posts', async (req, res) => {
     lng,
     distance,
   } = req.query
+
   const posts = await knex
     .select(
       'post.*',
@@ -122,10 +124,12 @@ app.get('/posts/:id', async (req, res) => {
     .where('image.post_id', parseInt(id))
   const today = new Date().toISOString().split('T')[0]
   const schedule = await knex
-    .select('from_date as fromDate', 'to_date as toDate')
+    .select('from_date as fromDate', 'to_date as toDate', 'user.full_name as fullName', 'user.phone_number as phoneNumber' )
     .from('post_schedule')
+    .leftJoin('user', 'post_schedule.user_id', 'user.user_id')
     .where('post_id', parseInt(id))
-    .andWhere('to_date', '>=', today)
+    // .andWhere('to_date', '>=', today)
+    .orderBy('from_date')
   const [{ totalReview }] = await knex('post_schedule')
     .count('schedule_id as totalReview')
     .whereNotNull('rating')
@@ -300,10 +304,14 @@ res.send(postmanges)
 
 
 //Xoa
-
+app.post('/delete/:postId', async(req, res) => {
+  const postId = req.params.postId
+ 
+  res.sendStatus(200)
+})
 
 //Duyet
-app.post('/accept/:postId', async(req, res) =>{
+app.post('admin/accept/:postId', async(req, res) =>{
   const postId = req.params.postId
   const post = await knex('post')
   .where('post_id', postId)
