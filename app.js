@@ -188,6 +188,7 @@ app.get('/schedule/:userId', async (req, res) => {
   const userId = req.params.userId
   let schedules = await knex 
     .select('post_schedule.schedule_id as Id','post_schedule.from_date as fromDate', 
+    'post.post_id as postId',
     'post_schedule.to_date as toDate',
     'post.title as title', 'post.address as adress',
     'user.full_name as fullNameHost', 'user.phone_number as Phone')
