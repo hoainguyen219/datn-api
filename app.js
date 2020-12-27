@@ -69,7 +69,7 @@ app.get('/posts', async (req, res) => {
     .select(
       'post.*',
       'post_schedule.from_date as fromDate',
-      'post_schedule.to_date as toDate',
+      'post_schedule.to_date as toDate'
     )
     .count('rating as totalReview')
     .sum('rating as totalScore')
@@ -124,7 +124,12 @@ app.get('/posts/:id', async (req, res) => {
     .where('image.post_id', parseInt(id))
   const today = new Date().toISOString().split('T')[0]
   const schedule = await knex
-    .select('from_date as fromDate', 'to_date as toDate', 'user.full_name as fullName', 'user.phone_number as phoneNumber' )
+    .select(
+      'from_date as fromDate',
+      'to_date as toDate',
+      'user.full_name as fullName',
+      'user.phone_number as phoneNumber'
+    )
     .from('post_schedule')
     .leftJoin('user', 'post_schedule.user_id', 'user.user_id')
     .where('post_id', parseInt(id))
@@ -186,12 +191,17 @@ app.get('/list/:userId', async (req, res) => {
 //get schedule by userid: xem lich su thue
 app.get('/schedule/:userId', async (req, res) => {
   const userId = req.params.userId
-  let schedules = await knex 
-    .select('post_schedule.schedule_id as Id','post_schedule.from_date as fromDate', 
-    'post.post_id as postId',
-    'post_schedule.to_date as toDate',
-    'post.title as title', 'post.address as adress',
-    'user.full_name as fullNameHost', 'user.phone_number as Phone')
+  let schedules = await knex
+    .select(
+      'post_schedule.schedule_id as Id',
+      'post_schedule.from_date as fromDate',
+      'post.post_id as postId',
+      'post_schedule.to_date as toDate',
+      'post.title as title',
+      'post.address as adress',
+      'user.full_name as fullNameHost',
+      'user.phone_number as Phone'
+    )
     .from('post_schedule')
     .leftJoin('post', 'post.post_id', 'post_schedule.schedule_id')
     .leftJoin('user', 'user.user_id', 'post.post_by')
@@ -288,42 +298,44 @@ app.post('/posts/:id/booking', async (req, res) => {
 app.post('/posts/:scheduleId/rating', async (req, res) => {
   const scheduleId = req.params.scheduleId
   const { score, score1 } = req.body
-  await knex('post_schedule')
-    .where('schedule_id', scheduleId)
-    .update({
-      'rating': score,
-      'rating_1': score1
-    })
+  await knex('post_schedule').where('schedule_id', scheduleId).update({
+    rating: score,
+    rating_1: score1,
+  })
   res.send({ scheduleId })
 })
 
 //quan ly bai viet
-app.get('/admin', async(req, res) => {
-  const postmanges = await knex('post')
-  .select('post.*')
-  .where('status', 0)
+app.get('/admin', async (req, res) => {
+  const postmanges = await knex('post').select('post.*').where('status', 0)
 
-res.send(postmanges)
+  res.send(postmanges)
 })
 
 //Chinh sua bai viet
 
-
 //Xoa
-app.post('/delete/:postId', async(req, res) => {
+app.delete('/post/:postId', async (req, res) => {
   const postId = req.params.postId
- 
-  res.sendStatus(200)
+  const hasSchedule = await knex('post_schedule')
+    .where({ post_id: postId })
+    .andWhereRaw('to_date > current_date()')
+  if (hasSchedule.length) return res.sendStatus(400)
+  const deletedCount = await knex('post')
+    .where({
+      post_id: postId,
+    })
+    .del()
+  if (!deletedCount) return res.sendStatus(404)
+  return res.send({ postId })
 })
 
 //Duyet
-app.post('admin/accept/:postId', async(req, res) =>{
+app.post('admin/accept/:postId', async (req, res) => {
   const postId = req.params.postId
-  const post = await knex('post')
-  .where('post_id', postId)
-  .update('status', 1)
+  const post = await knex('post').where('post_id', postId).update('status', 1)
 
-res.send(postId)
+  res.send(postId)
 })
 
 const port = process.env.PORT || 5000
