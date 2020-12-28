@@ -8,6 +8,7 @@ const admin = require('./storage')
 const config = require('./config')
 
 const { camelize } = require('./util')
+const { count } = require('./database')
 
 const uploads = multer({
   limits: {
@@ -63,12 +64,15 @@ app.get('/posts', async (req, res) => {
     lng,
     distance,
   } = req.query
+
   const posts = await knex
     .select(
       'post.*',
       'post_schedule.from_date as fromDate',
       'post_schedule.to_date as toDate'
     )
+    .count('rating as totalReview')
+    .sum('rating as totalScore')
     .from('post')
     .leftJoin('post_schedule', 'post.post_id', 'post_schedule.post_id')
     .modify((queryBuilder) => {
@@ -120,10 +124,17 @@ app.get('/posts/:id', async (req, res) => {
     .where('image.post_id', parseInt(id))
   const today = new Date().toISOString().split('T')[0]
   const schedule = await knex
-    .select('from_date as fromDate', 'to_date as toDate')
+    .select(
+      'from_date as fromDate',
+      'to_date as toDate',
+      'user.full_name as fullName',
+      'user.phone_number as phoneNumber'
+    )
     .from('post_schedule')
+    .leftJoin('user', 'post_schedule.user_id', 'user.user_id')
     .where('post_id', parseInt(id))
-    .andWhere('to_date', '>=', today)
+    // .andWhere('to_date', '>=', today)
+    .orderBy('from_date')
   const [{ totalReview }] = await knex('post_schedule')
     .count('schedule_id as totalReview')
     .whereNotNull('rating')
@@ -132,10 +143,20 @@ app.get('/posts/:id', async (req, res) => {
     .sum({ totalScore: 'rating' })
     .where('post_id', parseInt(id))
   const avgScore = totalScore / totalReview
+  // hien thi diem danh gia nguoi cho thue
+  const [{ totalReview1 }] = await knex('post_schedule')
+    .count('schedule_id as totalReview1')
+    .whereNotNull('rating_1')
+    .andWhere('post_id', parseInt(id))
+  const [{ totalScore1 }] = await knex('post_schedule')
+    .sum({ totalScore1: 'rating_1' })
+    .where('post_id', parseInt(id))
+  const avgScore1 = totalScore1 / totalReview1
   post.urlImages = urlImages.map((x) => x.url_image)
   post.schedule = schedule
   post.totalReview = totalReview
-  post.avgScore = avgScore
+  post.avgScore = avgScore.toFixed(2)
+  post.avgScore1 = avgScore1.toFixed(2)
   res.send(camelize(post))
 })
 
@@ -151,7 +172,9 @@ app.get('/cities/:cityId', async (req, res) => {
   const districts = await knex
     .select('*')
     .from('district')
-    .where('code', cityId)
+    // .where('code', cityId)
+    .where('city_id', cityId)
+
   res.send(districts)
 })
 
@@ -162,6 +185,7 @@ app.get('/list/:userId', async (req, res) => {
     .select('post.*')
     .from('post')
     .where('post.post_by', parseInt(userId))
+    .orderBy ('post_id','desc')
   res.send(posts)
 })
 
@@ -169,9 +193,21 @@ app.get('/list/:userId', async (req, res) => {
 app.get('/schedule/:userId', async (req, res) => {
   const userId = req.params.userId
   let schedules = await knex
-    .select('post_schedule.*')
+    .select(
+      'post_schedule.schedule_id as Id',
+      'post_schedule.from_date as fromDate',
+      'post.post_id as postId',
+      'post_schedule.to_date as toDate',
+      'post.title as title',
+      'post.address as adress',
+      'user.full_name as fullNameHost',
+      'user.phone_number as Phone'
+    )
     .from('post_schedule')
+    .leftJoin('post', 'post.post_id', 'post_schedule.schedule_id')
+    .leftJoin('user', 'user.user_id', 'post.post_by')
     .where('post_schedule.user_id', parseInt(userId))
+    .orderBy('from_date')
   res.send(schedules)
 })
 
@@ -263,11 +299,45 @@ app.post('/posts/:id/booking', async (req, res) => {
 //rating
 app.post('/posts/:scheduleId/rating', async (req, res) => {
   const scheduleId = req.params.scheduleId
-  const { score } = req.body
-  await knex('post_schedule')
-    .where('schedule_id', scheduleId)
-    .update('rating', score)
-  res.sendStatus({ scheduleId })
+  const { score, score1 } = req.body
+  await knex('post_schedule').where('schedule_id', scheduleId).update({
+    rating: score,
+    rating_1: score1,
+  })
+  res.send({ scheduleId })
+})
+
+//quan ly bai viet
+app.get('/admin', async (req, res) => {
+  const postmanges = await knex('post').select('post.*').where('status', 0)
+
+  res.send(postmanges)
+})
+
+//Chinh sua bai viet
+
+//Xoa
+app.delete('/post/:postId', async (req, res) => {
+  const postId = req.params.postId
+  const hasSchedule = await knex('post_schedule')
+    .where({ post_id: postId })
+    .andWhereRaw('to_date > current_date()')
+  if (hasSchedule.length) return res.sendStatus(400)
+  const deletedCount = await knex('post')
+    .where({
+      post_id: postId,
+    })
+    .del()
+  if (!deletedCount) return res.sendStatus(404)
+  return res.send({ postId })
+})
+
+//Duyet
+app.post('admin/accept/:postId', async (req, res) => {
+  const postId = req.params.postId
+  const post = await knex('post').where('post_id', postId).update('status', 1)
+
+  res.send(postId)
 })
 
 const port = process.env.PORT || 5000
