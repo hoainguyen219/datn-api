@@ -183,8 +183,14 @@ app.get('/list/:userId', async (req, res) => {
   const userId = req.params.userId
   let posts = await knex
     .select('post.*')
+    .count('rating as totalReview')
+    .sum('rating as totalScore')
+    .count('rating_1 as totalReview1')
+    .sum('rating_1 as totalScore1')
     .from('post')
+    .leftJoin('post_schedule', 'post.post_id', 'post_schedule.post_id')
     .where('post.post_by', parseInt(userId))
+    .groupBy('post_id')
     .orderBy ('post_id','desc')
   res.send(posts)
 })
@@ -204,11 +210,25 @@ app.get('/schedule/:userId', async (req, res) => {
       'user.phone_number as Phone'
     )
     .from('post_schedule')
-    .leftJoin('post', 'post.post_id', 'post_schedule.schedule_id')
+    .leftJoin('post', 'post.post_id', 'post_schedule.post_id')
     .leftJoin('user', 'user.user_id', 'post.post_by')
     .where('post_schedule.user_id', parseInt(userId))
-    .orderBy('from_date')
-  res.send(schedules)
+    .orderBy('post_schedule.post_id')
+
+  const review = await knex ('post_schedule')
+  .select('post_id')
+  .count('rating as totalReview')
+  .sum('rating as totalScore')
+  .count('rating_1 as totalReview1')
+  .sum('rating_1 as totalScore1')
+  .whereIn('post_id', function() {
+    this.select('post_id').from('post_schedule').where('user_id', parseInt(userId));
+  })
+  .groupBy('post_id')
+  .orderBy('post_id')
+  console.log(218, review)
+  schedules.review = review
+  res.send(camelize(schedules))
 })
 
 // post
@@ -323,6 +343,11 @@ app.delete('/post/:postId', async (req, res) => {
     .where({ post_id: postId })
     .andWhereRaw('to_date > current_date()')
   if (hasSchedule.length) return res.sendStatus(400)
+  await knex('post_schedule')
+  .where({
+    post_id: postId,
+  })
+  .del()
   const deletedCount = await knex('post')
     .where({
       post_id: postId,
