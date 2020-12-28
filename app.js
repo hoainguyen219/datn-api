@@ -215,7 +215,7 @@ app.get('/schedule/:userId', async (req, res) => {
     .where('post_schedule.user_id', parseInt(userId))
     .orderBy('post_schedule.post_id')
 
-  const review = await knex ('post_schedule')
+  const reviews = await knex ('post_schedule')
   .select('post_id')
   .count('rating as totalReview')
   .sum('rating as totalScore')
@@ -226,9 +226,22 @@ app.get('/schedule/:userId', async (req, res) => {
   })
   .groupBy('post_id')
   .orderBy('post_id')
-  console.log(218, review)
-  schedules.review = review
+
+  const reviewsMapping = {};
+  for (let review of reviews) {
+    if (reviewsMapping[review.pos_id]) {
+      reviewsMapping[review.pos_id].push(review);
+    }
+    else {
+      reviewsMapping[review.post_id] = [review];
+    }
+  }
+  for (let schedule of schedules) {
+    schedule['reviews'] = reviewsMapping[schedule.postId];
+  }
+  
   res.send(camelize(schedules))
+
 })
 
 // post
