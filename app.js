@@ -205,7 +205,7 @@ app.get('/schedule/:userId', async (req, res) => {
       'post.post_id as postId',
       'post_schedule.to_date as toDate',
       'post.title as title',
-      'post.address as adress',
+      'post.address as address',
       'user.full_name as fullNameHost',
       'user.phone_number as Phone'
     )
