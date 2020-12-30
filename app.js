@@ -191,7 +191,7 @@ app.get('/list/:userId', async (req, res) => {
     .leftJoin('post_schedule', 'post.post_id', 'post_schedule.post_id')
     .where('post.post_by', parseInt(userId))
     .groupBy('post_id')
-    .orderBy ('post_id','desc')
+    .orderBy('post_id', 'desc')
   res.send(posts)
 })
 
@@ -205,7 +205,7 @@ app.get('/schedule/:userId', async (req, res) => {
       'post.post_id as postId',
       'post_schedule.to_date as toDate',
       'post.title as title',
-      'post.address as adress',
+      'post.address as address',
       'user.full_name as fullNameHost',
       'user.phone_number as Phone'
     )
@@ -215,19 +215,19 @@ app.get('/schedule/:userId', async (req, res) => {
     .where('post_schedule.user_id', parseInt(userId))
     .orderBy('post_schedule.post_id')
 
-  const reviews = await knex ('post_schedule')
-  .select('post_id')
-  .count('rating as totalReview')
-  .sum('rating as totalScore')
-  .count('rating_1 as totalReview1')
-  .sum('rating_1 as totalScore1')
-  .whereIn('post_id', function() {
-    this.select('post_id').from('post_schedule').where('user_id', parseInt(userId));
-  })
-  .groupBy('post_id')
-  .orderBy('post_id')
+  const reviews = await knex('post_schedule')
+    .select('post_id')
+    .count('rating as totalReview')
+    .sum('rating as totalScore')
+    .count('rating_1 as totalReview1')
+    .sum('rating_1 as totalScore1')
+    .whereIn('post_id', function () {
+      this.select('post_id').from('post_schedule').where('user_id', parseInt(userId));
+    })
+    .groupBy('post_id')
+    .orderBy('post_id')
 
-  const reviewsMapping = {};
+  const reviewsMapping = [];
   for (let review of reviews) {
     if (reviewsMapping[review.pos_id]) {
       reviewsMapping[review.pos_id].push(review);
@@ -239,9 +239,8 @@ app.get('/schedule/:userId', async (req, res) => {
   for (let schedule of schedules) {
     schedule['reviews'] = reviewsMapping[schedule.postId];
   }
-  
-  res.send(camelize(schedules))
 
+  res.send(schedules)
 })
 
 // post
@@ -346,6 +345,19 @@ app.get('/admin', async (req, res) => {
 
   res.send(postmanges)
 })
+//thống kê
+app.get('/admin/tk', async (req, res) => {
+  let list = await knex('post')
+    .select('city as city')
+    .count('city as count')
+    .groupBy('city')
+    .orderBy('count', 'desc')
+    .limit(10)
+  const totalPost = await knex('post').count('* as totalPost')
+  
+  list.totalPost = totalPost
+  res.send(camelize(list))
+})
 
 //Chinh sua bai viet
 
@@ -357,10 +369,15 @@ app.delete('/post/:postId', async (req, res) => {
     .andWhereRaw('to_date > current_date()')
   if (hasSchedule.length) return res.sendStatus(400)
   await knex('post_schedule')
-  .where({
-    post_id: postId,
-  })
-  .del()
+    .where({
+      post_id: postId,
+    })
+    .del()
+  await knex('image')
+    .where({
+      post_id: postId,
+    })
+    .del()
   const deletedCount = await knex('post')
     .where({
       post_id: postId,
