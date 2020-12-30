@@ -312,6 +312,7 @@ app.post('/login', async (req, res) => {
     .where('account', username)
     .andWhere('password', password)
     .first()
+  if (!userInfo) return res.sendStatus(400)
   res.send(userInfo)
 })
 // booking
