@@ -222,22 +222,23 @@ app.get('/schedule/:userId', async (req, res) => {
     .count('rating_1 as totalReview1')
     .sum('rating_1 as totalScore1')
     .whereIn('post_id', function () {
-      this.select('post_id').from('post_schedule').where('user_id', parseInt(userId));
+      this.select('post_id')
+        .from('post_schedule')
+        .where('user_id', parseInt(userId))
     })
     .groupBy('post_id')
     .orderBy('post_id')
 
-  const reviewsMapping = [];
+  const reviewsMapping = []
   for (let review of reviews) {
     if (reviewsMapping[review.pos_id]) {
-      reviewsMapping[review.pos_id].push(review);
-    }
-    else {
-      reviewsMapping[review.post_id] = [review];
+      reviewsMapping[review.pos_id].push(review)
+    } else {
+      reviewsMapping[review.post_id] = [review]
     }
   }
   for (let schedule of schedules) {
-    schedule['reviews'] = reviewsMapping[schedule.postId];
+    schedule['reviews'] = reviewsMapping[schedule.postId]
   }
 
   res.send(schedules)
@@ -311,6 +312,7 @@ app.post('/login', async (req, res) => {
     .where('account', username)
     .andWhere('password', password)
     .first()
+  if (!userInfo) return res.sendStatus(400)
   res.send(userInfo)
 })
 // booking
@@ -354,7 +356,7 @@ app.get('/admin/tk', async (req, res) => {
     .orderBy('count', 'desc')
     .limit(10)
   const totalPost = await knex('post').count('* as totalPost')
-  
+
   list.totalPost = totalPost
   res.send(camelize(list))
 })
@@ -388,11 +390,11 @@ app.delete('/post/:postId', async (req, res) => {
 })
 
 //Duyet
-app.post('admin/accept/:postId', async (req, res) => {
+app.post('/admin/accept/:postId', async (req, res) => {
   const postId = req.params.postId
   const post = await knex('post').where('post_id', postId).update('status', 1)
-
-  res.send(postId)
+  if (!post) return res.sendStatus(404)
+  return res.send({ postId })
 })
 
 const port = process.env.PORT || 5000
