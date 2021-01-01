@@ -241,7 +241,35 @@ app.get('/schedule/:userId', async (req, res) => {
     schedule['reviews'] = reviewsMapping[schedule.postId]
   }
 
+  const rates = await knex('post_schedule')
+  .select('rating as Rating', 'post_id', 'rating_1 as Rating1')
+  .where('user_id', userId)
+  .whereNotNull('rating')
+  .whereIn('post_id', function () {
+    this.select('post_id')
+      .from('post_schedule')
+      .where('user_id', parseInt(userId))
+  })
+  .orderBy('post_id')
+
+
+  const rateMapping = []
+  for (let rate of rates) {
+    rate.isRated = 1
+    if (!rate.rating) {
+      if (rateMapping[rate.pos_id]) {
+        rateMapping[rate.pos_id].push(rate)
+      } else {
+        rateMapping[rate.post_id] = [rate]
+      }
+    }
+  }
+  for (let schedule of schedules) {
+    schedule.isRated = rateMapping[schedule.postId]
+  }
+  
   res.send(schedules)
+
 })
 
 // post
@@ -349,16 +377,16 @@ app.get('/admin', async (req, res) => {
 })
 //thống kê
 app.get('/admin/tk', async (req, res) => {
-  let list = await knex('post')
+  const cities = await knex('post')
     .select('city as city')
     .count('city as count')
     .groupBy('city')
     .orderBy('count', 'desc')
     .limit(10)
-  const totalPost = await knex('post').count('* as totalPost')
+  let totalPost = await knex('post').count('* as totalPost').first()
 
-  list.totalPost = totalPost
-  res.send(camelize(list))
+  totalPost.cities = cities
+  res.send(camelize(totalPost))
 })
 
 //Chinh sua bai viet
