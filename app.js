@@ -142,7 +142,13 @@ app.get('/posts/:id', async (req, res) => {
   const [{ totalScore }] = await knex('post_schedule')
     .sum({ totalScore: 'rating' })
     .where('post_id', parseInt(id))
-  const avgScore = totalScore / totalReview
+  var avgScore
+  var avgScore1
+  if (totalReview !== 0) {
+    avgScore = (totalScore / totalReview).toFixed(2)
+  }
+  else avgScore = undefined
+  
   // hien thi diem danh gia nguoi cho thue
   const [{ totalReview1 }] = await knex('post_schedule')
     .count('schedule_id as totalReview1')
@@ -151,12 +157,14 @@ app.get('/posts/:id', async (req, res) => {
   const [{ totalScore1 }] = await knex('post_schedule')
     .sum({ totalScore1: 'rating_1' })
     .where('post_id', parseInt(id))
-  const avgScore1 = totalScore1 / totalReview1
+  if (totalReview1 !== 0) {
+    avgScore1 = (totalScore1 / totalReview1).toFixed(2)
+  } else avgScore1 = undefined
   post.urlImages = urlImages.map((x) => x.url_image)
   post.schedule = schedule
   post.totalReview = totalReview
-  post.avgScore = avgScore.toFixed(2)
-  post.avgScore1 = avgScore1.toFixed(2)
+  post.avgScore = avgScore
+  post.avgScore1 = avgScore1
   res.send(camelize(post))
 })
 
