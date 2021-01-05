@@ -332,7 +332,7 @@ app.post('/posts', async (req, res) => {
 })
 
 //chinh sua
-app.patch('/posts/update/:postId', async (req, res) => {
+app.post('/posts/update/:postId', async (req, res) => {
   console.log('kkk')
   const postId = req.params.postId
   const files = req.files
@@ -396,6 +396,9 @@ app.get('/getSchedule/:postId', async(req, res) => {
 // register
 app.post('/register', async (req, res) => {
   const user = req.body
+  const checkUser = await knex('user').select('user_id').where('account', user.account)
+  console.log(checkUser.length)
+  if (checkUser.length > 0) {return res.sendStatus(400)}
   const [userId] = await knex('user').insert([
     {
       ...user,
