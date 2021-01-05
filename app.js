@@ -135,7 +135,7 @@ app.get('/posts/:id', async (req, res) => {
     .from('post_schedule')
     .leftJoin('user', 'post_schedule.user_id', 'user.user_id')
     .where('post_id', parseInt(id))
-    // .andWhere('to_date', '>=', today)
+    .andWhere('to_date', '>=', today)
     .orderBy('from_date')
   const [{ totalReview }] = await knex('post_schedule')
     .count('schedule_id as totalReview')
@@ -202,7 +202,34 @@ app.get('/list/:userId', async (req, res) => {
     .where('post.post_by', parseInt(userId))
     .groupBy('post_id')
     .orderBy('post_id', 'desc')
-  res.send(posts)
+
+  const schedules = await knex
+    .select('from_date as fromDate', 'to_date as toDate', 
+    'user.full_name as fullName', 'user.phone_number as phoneNumber',
+    'post.title as title', 'post.address as address')
+    .from('post_schedule')
+    .leftJoin('post', 'post.post_id', 'post_schedule.post_id')
+    .leftJoin('user', 'user.user_id', 'post_schedule.user_id')
+    .where('post.post_by', parseInt(userId))
+    .orderBy([{column: 'post.post_id', order:'asc'}, {column: 'fromDate', order: 'asc'}])
+  posts.schedules = schedules
+  res.send(camelize(posts))
+})
+
+app.get('/manageSchedule/:userId', async (req, res) => {
+  const userId = req.params.userId
+  const schedules = await knex
+    .select('from_date as fromDate', 'to_date as toDate', 
+    'user.full_name as fullName', 'user.phone_number as phoneNumber',
+    'post.title as title', 'post.address as address')
+    .from('post_schedule')
+    .leftJoin('post', 'post.post_id', 'post_schedule.post_id')
+    .leftJoin('user', 'user.user_id', 'post_schedule.user_id')
+    .where('post.post_by', parseInt(userId))
+    .andWhere(knex.raw('to_date > current_date'))
+    .orderBy([{column: 'post.post_id', order:'asc'}, {column: 'fromDate', order: 'asc'}])
+  
+    res.send(schedules)
 })
 
 //get schedule by userid: xem lich su thue
@@ -387,7 +414,7 @@ app.get('/getSchedule/:postId', async(req, res) => {
   const postId = req.params.postId
   const listSchedule = await knex('post_schedule')
   .select('from_date as fromDate', 'to_date as toDate')
-  .whereRaw('post_id = ? and to_date > current_date', [postId])
+  .whereRaw('post_id = ? and to_date >= current_date', [postId])
 
   res.send(listSchedule)
 })
