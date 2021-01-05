@@ -202,18 +202,7 @@ app.get('/list/:userId', async (req, res) => {
     .where('post.post_by', parseInt(userId))
     .groupBy('post_id')
     .orderBy('post_id', 'desc')
-
-  const schedules = await knex
-    .select('from_date as fromDate', 'to_date as toDate', 
-    'user.full_name as fullName', 'user.phone_number as phoneNumber',
-    'post.title as title', 'post.address as address')
-    .from('post_schedule')
-    .leftJoin('post', 'post.post_id', 'post_schedule.post_id')
-    .leftJoin('user', 'user.user_id', 'post_schedule.user_id')
-    .where('post.post_by', parseInt(userId))
-    .orderBy([{column: 'post.post_id', order:'asc'}, {column: 'fromDate', order: 'asc'}])
-  posts.schedules = schedules
-  res.send(camelize(posts))
+  res.send(posts)
 })
 
 app.get('/manageSchedule/:userId', async (req, res) => {
