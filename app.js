@@ -108,7 +108,7 @@ app.get('/posts', async (req, res) => {
       }
     })
     .groupBy('post.post_id')
-    .limit(10)
+
   res.send(posts.map((x) => camelize(x)))
 })
 
@@ -337,6 +337,7 @@ app.post('/posts', async (req, res) => {
       garage: newPost.utilities.garage ? 1 : 0,
       electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
       status: 0,
+      post_by: newPost.userId
     },
   ])
   await knex('image').insert(
@@ -369,26 +370,26 @@ app.post('/posts/update/:postId', async (req, res) => {
     }
   }
   const newPost = req.body
-  const [post] = await knex('post').where('post_id', parseInt(postId)).update([
+  console.log(req.body.title)
+  const post = await knex('post').where('post_id', parseInt(postId)).update(
     {
-      title: newPost.title,
+      title: newPost.title || '',
       area: newPost.area,
-      address: newPost.address,
-      bathroom: newPost.bathroom,
-      city: newPost.city,
-      district: newPost.district,
-      lat: newPost.lat,
-      lng: newPost.lng,
-      description: newPost.description,
-      price: newPost.price,
-      bedroom: newPost.bedroom,
-      air_condition: newPost.utilities.air_condition ? 1 : 0,
+      address: newPost.address || '',
+      bathroom: newPost.bathroom ,
+      city: newPost.city || '',
+      district: newPost.district || '',
+      lat: newPost.lat ,
+      lng: newPost.lng ,
+      description: newPost.description || '',
+      price: newPost.price ,
+      bedroom: newPost.bedroom ,
+      air_condition: newPost.utilities.air_condition ? 1 : 0 ,
       wc: newPost.utilities.wc ? 1 : 0,
       garage: newPost.utilities.garage ? 1 : 0,
-      electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0,
-      status: 0,
+      electric_water_heater: newPost.utilities.electric_water_heater ? 1 : 0 ,
     },
-  ])
+  )
   await knex('image').where('post_id', parseInt(postId)).del()
   await knex('image').insert(
     filesUrls.map((item) => {
@@ -448,9 +449,7 @@ app.post('/posts/:id/booking', async (req, res) => {
       or ((? between from_date and to_date) and (? between from_date and to_date)))
       `,
       [postId, fromDate, toDate, fromDate, toDate, fromDate, toDate])
-    .andWhere(function() {
-      this.where('post_id', parseInt(postId))
-    })
+    
   console.log(365, booked.length)
   console.log(366, booked)
   if (booked.length > 0) {
